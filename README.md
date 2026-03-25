@@ -1,3 +1,4 @@
+
 # Exploiting and Mitigating JWT Authentication Vulnerabilities: From Algorithm Confusion to Path Injection
 
 ## Project Overview
