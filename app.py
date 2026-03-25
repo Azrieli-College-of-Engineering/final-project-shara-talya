@@ -4,25 +4,25 @@ import os
 
 app = Flask(__name__)
 
-# מפתח סודי (במציאות הוא צריך להיות שמור היטב, כאן הוא לצורך ההדגמה)
+# Static demo key used intentionally for the POC.
 SECRET_KEY = "super-secret-key-123"
 
 
-# 1. Endpoint להתחברות - מחזיר JWT סטנדרטי
+# Issues a baseline HS256 token for the demonstration flow.
 @app.route('/login', methods=['POST'])
 def login():
-    # לצורך ה-POC, נניח שהתחברות תמיד מצליחה כמשתמש רגיל
+    # POC simplification: authentication always succeeds as a regular user.
     payload = {
         "user": "guest_user",
         "role": "user"
     }
 
-    # יצירת טוקן חתום באלגוריתם HS256
+    # Generate a signed token with HS256.
     token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
     return jsonify({"token": token})
 
 
-# 2. Endpoint הפגיע - כאן קורה ה-Bypass
+# Intentionally vulnerable endpoint for JWT signature-bypass research.
 @app.route('/api/jwt-inspect', methods=['GET'])
 def inspect_jwt():
     auth_header = request.headers.get('Authorization')
@@ -31,11 +31,10 @@ def inspect_jwt():
         return jsonify({"error": "Missing token"}), 401
 
     try:
-        # הסרת המילה 'Bearer ' מההדר אם קיימת
+        # Strip optional "Bearer " prefix from the Authorization header.
         token = auth_header.split(" ")[1] if " " in auth_header else auth_header
 
-        # החולשה: שימוש ב-jwt.decode ללא אימות חתימה (options={"verify_signature": False})
-        # או פשוט אי-הגדרת אלגוריתמים מותרים [cite: 6, 50, 53]
+        # Intentional POC flaw: signature verification is disabled and "none" is allowed.
         decoded_payload = jwt.decode(
             token,
             SECRET_KEY,
@@ -61,7 +60,7 @@ def inspect_jwt():
 
 
 
-#another kind of JWT attack
+# Intentionally vulnerable endpoint for `kid` path-injection research.
 @app.route('/api/kid-inspect', methods=['GET'])
 def kid_inspect():
 
@@ -73,14 +72,14 @@ def kid_inspect():
     token = auth_header.split(" ")[1]
 
     try:
-        # נקרא את ה-header בלי אימות
+        # Read JWT header before verification to extract `kid`.
         header = jwt.get_unverified_header(token)
 
         kid = header.get("kid")
 
         print("KID =", kid)
 
-        # ❌ קוד פגיע
+        # Intentional POC flaw: untrusted `kid` is used to build a filesystem path.
         key_path = os.path.join("keys", kid)
 
         print("JOIN PATH =", key_path)
